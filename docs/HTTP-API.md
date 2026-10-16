@@ -49,10 +49,14 @@ Host: 127.0.0.1:5000
 | GET | `/api/schema/databases` | 递归列出解密目录与源 `DB_DIR` 中的 `.db`，标明可读取 / 未解密 / 不可读取状态 |
 | GET | `/api/schema/tables?db=message%2Fmessage_0.db` | 指定数据库中的全部表和视图，含表中文说明 |
 | GET | `/api/schema/table?db=message%2Fmessage_0.db&table=Name2Id` | 字段、原始建表 SQL、索引、外键及字段中文注释 |
+| GET | `/api/schema/export?db=contact%2Fcontact.db&scope=current&format=json` | 下载当前库的全部结构与中文说明 |
+| GET | `/api/schema/export?scope=all&format=markdown` | 下载全部库的结构，保留未解密及失败状态 |
 
 `db` 为解密目录内的相对路径，不接受绝对路径、越界路径或非 `.db` 文件。表名须实际存在，不接受任意 SQL。
 
 字段注释返回 `comment`（中文含义）、`confidence`（`high` 项目解析依据 / `inferred` 名称推测 / `unknown` 未知）、`basis`（依据）。`high` 表示项目已有相应用法，不代表微信官方定义。结构来自实际数据库，注释不写回数据库。缺参数 / 非法路径返回 400，不存在返回 404，不可读取返回 422。
+
+结构导出的 `scope` 支持 `current`（默认，需 `db`）和 `all`；`format` 支持 `json`（默认）和 `markdown`。附件名为 `database-schema.json` / `database-schema.md`。JSON 顶层为 `format_version: 1`、`databases` 数组，每个库含相对 `path`、`status`、`error` 和 `tables`。导出不包含数据行及配置中的绝对目录；全部库中单个坏库不影响其他库。
 
 ---
 

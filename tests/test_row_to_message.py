@@ -24,8 +24,9 @@ class TestRowToMessageBasic:
         assert '你好世界' in msg['content']
 
     def test_text_from_other(self):
-        msg = _row_to_message(_make_row(content='hello', origin=0),
-                              chat_id='wxid_abc')
+        msg = _row_to_message(_make_row(content='hello', origin=0, sender_id=2),
+                              chat_id='wxid_abc', own_wxid='wxid_self',
+                              name2id={2: 'wxid_abc'})
         assert msg['is_sender'] is False
         assert msg['sender_name'] == 'wxid_abc'
 

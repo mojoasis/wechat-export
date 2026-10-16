@@ -35,11 +35,9 @@ FIXTURES = os.path.join(JS_DIR, 'fixtures')
 TPL_DIR = os.path.join(ROOT, 'src', 'web', 'templates')
 GUARD = 'keys_dirs_annotate_guard.js'
 KEYS_TPL = os.path.join(TPL_DIR, 'keys.html')
-# Task 22 改造前的 keys.html 逐字节快照（只给"旧格式响应等价性"这一条断言用）。
-# ⚠ 这份快照**不是** `git show HEAD:` —— 改造前工作区里的 keys.html 已经领先 HEAD
-#   （别的任务先改过这一页），所以正文哈希是改造前**工作区**文件的 SHA-256。
+# 冻结的旧行为快照；正文以仓库提交的 LF 字节计算哈希。
 BASELINE = os.path.join(FIXTURES, 'keys_prechange_baseline.html')
-BASELINE_SHA256 = 'b25ea9ac3e8d7b33a789c0fcde8604f70cf15b213d29cb1ffe8cb71e3d85829a'
+BASELINE_SHA256 = 'e3230ea07fc7cdd70c5d4d944e4455327ede3ddc3fe6b1db19024815e4a8f90b'
 
 # 守卫**可能**碰到的文件：守卫只在内存里改内联源码，其余只读。
 # 全部纳入哈希清单 ⇒ "变异落盘"会在这里立刻变红。
@@ -177,12 +175,7 @@ def test_js_does_not_reinvent_the_backend_reason_copy():
 
 
 def test_baseline_snapshot_is_the_prechange_implementation():
-    """冻结基线必须是改造前的逐字节快照（否则等价性断言会自己骗自己）。
-
-    头部那一段 HTML 注释是本任务加的（说明用途）；**注释之后的正文**必须与改造前的
-    `src/web/templates/keys.html` 逐字节一致 —— 注意改造前的工作区文件已经领先
-    `git show HEAD:`（别的任务先改过这一页），所以这里比的是改造前**工作区**的 SHA-256。
-    """
+    """固定已提交的旧行为快照，防止等价性测试的基线被意外改动。"""
     assert os.path.isfile(BASELINE), BASELINE
     with open(BASELINE, 'rb') as fh:
         raw = fh.read()
@@ -191,7 +184,7 @@ def test_baseline_snapshot_is_the_prechange_implementation():
     assert idx > 0, '基线快照缺少"头部注释 + 正文"结构'
     body = raw[idx:]
     assert hashlib.sha256(body).hexdigest() == BASELINE_SHA256, \
-        '基线正文与改造前的 keys.html 不逐字节一致（SHA-256 不匹配）'
+        '基线正文与已提交的 LF 快照不逐字节一致（SHA-256 不匹配）'
     text = body.decode('utf-8')
     assert 'function applyDirs(' in text
     # 基线里**没有**新契约的东西：它不该认识 recommended_path / tier / reason

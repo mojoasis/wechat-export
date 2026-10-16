@@ -43,8 +43,11 @@ BLUEPRINT_GUARDS = (
     ('reports.wrapped', 'web.reports.wrapped'),
     ('routes.backup_api', 'web.routes.backup_api'),
     ('routes.export_api', 'web.routes.export_api'),
+    ('routes.sns_api', 'web.routes.sns_api'),
+    ('routes.voice_export_api', 'web.routes.voice_export_api'),
     ('routes.avatar_api', 'web.routes.avatar_api'),
     ('routes.cleanup_api', 'web.routes.cleanup_api'),
+    ('routes.media_integrity_api', 'web.routes.media_integrity_api'),
     ('routes.keys_api', 'web.routes.keys_api'),
     ('routes.pull_api', 'web.routes.pull_api'),
     ('routes.search_api', 'web.routes.search_api'),
@@ -225,5 +228,6 @@ class TestNormalPathIsUntouched:
         app = _build_app(tmp_path)
         assert tuple(app.blueprints) == (
             'api', 'reports', 'wrapped', 'backup_api', 'export_api',
-            'voice_export_api', 'avatar', 'cleanup', 'keys_api', 'pull_api', 'search_api',
+            'sns_api', 'voice_export_api', 'avatar', 'cleanup', 'media_integrity',
+            'keys_api', 'pull_api', 'search_api',
         )

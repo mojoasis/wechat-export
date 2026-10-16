@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """语音导出的数据模型、命名规则与合并计划（纯数据逻辑：无 IO、无子进程）。"""
 
-import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime

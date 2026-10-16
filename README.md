@@ -90,7 +90,17 @@
 
 ## 1. 快速开始
 
-双击 `wechat_exp.exe`（或 `start.bat`）即可，无需安装 Python。
+使用发布版时，双击 `wechat_exp.exe` 即可，无需安装 Python。
+
+从源码运行需要 Windows 10/11、Python 3.10+。在项目根目录执行：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe src/main.py
+```
+
+开发和测试使用 `requirements-dev.txt`；完整说明见 [开发手册](docs/DEVELOPMENT.md)。
 
 ```
 ① 登录微信（4.1.10+ 可保持运行；更早版本建议登录后尽快备份）
@@ -100,9 +110,6 @@
 
 ![仪表盘](screenshots/01-startup-masked.png)  
 *图 1：仪表盘首页 — 分析与导出优先*
-
-![仪表盘分区](screenshots/02-dashboard-masked.png)  
-*图 2：仪表盘功能入口*
 
 首次备份需要微信正在运行且已登录。之后日常分析不必开微信。
 
@@ -133,10 +140,8 @@
 | 分区 | 入口 |
 |------|------|
 | 分析与导出 | 聊天导出 · 全局搜索 · 综合报告 · 年度报告 · 词云 · 语音导出 |
-| 浏览 | 聊天查看器 · 通讯录 |
-| 数据采集 | 一键备份、备份版本（对比 / 回滚）、媒体完整性（缺失清单 / 一键补迁） |
 | 浏览 | 聊天查看器 · 通讯录 · 数据库结构 |
-| 数据采集 | 一键备份、备份版本（对比 / 回滚） |
+| 数据采集 | 一键备份、备份版本（对比 / 回滚）、媒体完整性（缺失清单 / 一键补迁） |
 | 更多导出 | Pull 数据源 · 员工报表 |
 | 工具 | 垃圾清理 · 提取密钥 · 手动输入密钥 · 解密数据库 · 设置 |
 
@@ -146,7 +151,9 @@
 
 仪表盘 → **数据库结构**（`/schema`）：按数据库浏览当前备份 / 解密目录内全部表和视图，支持搜索表名、字段名和中文含义。详情包含字段类型、主键、NOT NULL 声明、默认值、生成 / 隐藏列、建表 SQL、索引和外键。
 
-中文含义区分 **项目依据 / 名称推测 / 未知**，并显示依据。注释仅在页面展示，不写回数据库。源目录中未解密的数据库会标明状态；可先到 **解密数据库** 页面执行全量递归解密，再返回刷新（需要相应密钥）。
+中文含义区分 **项目依据 / 名称推测 / 未知**，并显示依据。联系人库中未被解析器使用的字段也提供名称推测，状态枚举、时间单位和编码格式等仍注明待确认。注释不写回数据库。源目录中未解密的数据库会标明状态；可先到 **解密数据库** 页面执行全量递归解密，再返回刷新（需要相应密钥）。
+
+页面上方选择 **当前数据库 / 全部数据库** 和 **JSON / Markdown**，点击 **导出表结构** 下载。导出包含全部表、字段、中文说明与依据、SQL、索引和外键，不受搜索筛选影响，不包含数据行；全部库导出会保留未解密或读取失败的状态。
 
 聊天记录的获取链路及实现说明见 [数据库结构与聊天记录读取](docs/DATABASE-SCHEMA.md)。
 
@@ -168,7 +175,7 @@
 找不到目录时可用「自动检测」「深度搜索」，或从微信「设置 → 文件管理 → 打开文件夹」粘贴 `db_storage` 路径。
 
 ![备份页](screenshots/03-backup-page-masked.png)  
-*图 3：一键备份 — 目录与日期*
+*图 2：一键备份 — 目录与日期*
 
 | 阶段 | 说明 | 大约耗时 |
 |------|------|---------|
@@ -176,9 +183,6 @@
 | 解密 | 解密库；缺密钥时自动从进程提取 | 10–60 秒 |
 | 迁移 | 复制图片 / 视频 / 语音 / 文件 | 1–5 分钟 |
 | 索引 | 构建统一索引（含搜索） | 10–30 秒 |
-
-![备份进度](screenshots/04-backup-progress-masked.png)  
-*图 4：备份页面与进度区域*
 
 结果默认在 exe 同目录的 `backup\` 下。无新消息时不必反复备份。
 
@@ -201,10 +205,7 @@
 | ChatLab JSONL / JSON | 导入 ChatLab；支持关键词过滤；JSONL 可断点续传 |
 
 ![导出页](screenshots/08-export-page-masked.png)  
-*图 5：多选会话 · 关键词 · 多格式（含会话报告包）*
-
-![导出勾选](screenshots/09-export-select-masked.png)  
-*图 6：已勾选会话示意*
+*图 3：多选会话 · 关键词 · 多格式（含会话报告包）*
 
 远程拉取请用 [Pull 数据源](#39-pull-数据源)；语音请用 [语音导出](#37-语音导出)。
 
@@ -217,7 +218,7 @@
 搜索完成后，结果区可一键导出命中消息为 **Excel / HTML / CSV / TXT**（受内存保护，单次最多约 1 万条，可缩小条件后重导）。
 
 ![全局搜索](screenshots/25-search-page-masked.png)  
-*图 7：全局搜索*
+*图 4：全局搜索*
 
 首次使用请先在本页或备份流程中**构建搜索索引**。
 
@@ -230,13 +231,13 @@
 - **年度报告**：Wrapped 风格卡片；可填写「限定会话」只分析单个群/联系人。
 
 ![年度报告](screenshots/06-wrapped-report-masked.png)  
-*图 8：年度报告（可限定会话）*
+*图 5：年度报告（可限定会话）*
 
 ![词云](screenshots/07-wordcloud-masked.png)  
-*图 9：词云分析*
+*图 6：词云分析*
 
 ![综合报告](screenshots/10-report-masked.png)  
-*图 10：综合报告*
+*图 7：综合报告*
 
 ---
 
@@ -245,7 +246,7 @@
 左侧会话列表，右侧气泡浏览；支持筛选、图片/视频/语音、转写等。详见 [第 4 章](#4-聊天查看器)。
 
 ![聊天查看器](screenshots/05-chat-viewer-masked.png)  
-*图 11：聊天查看器*
+*图 8：聊天查看器*
 
 ---
 
@@ -256,13 +257,7 @@
 支持 MP3（默认）/ WAV / M4A；可输出独立 HTML、逐条音频、合并音频与清单。
 
 ![语音导出](screenshots/22-voice-export-masked.png)  
-*图 12：语音导出*
-
-![语音结果](screenshots/23-voice-export-result-masked.png)  
-*图 13：导出结果区*
-
-![语音 HTML 选项](screenshots/24-voice-export-html-masked.png)  
-*图 14：HTML / 合并相关选项*
+*图 9：语音导出*
 
 ---
 
@@ -279,10 +274,7 @@
 默认监听 `127.0.0.1:8765`；局域网请用 `0.0.0.0` 并设置 Token，用完即停。
 
 ![Pull](screenshots/18-pull-page-masked.png)  
-*图 15：Pull 配置*
-
-![Pull 运行](screenshots/19-pull-running-masked.png)  
-*图 16：服务运行示意*
+*图 10：Pull 配置*
 
 ---
 
@@ -297,16 +289,13 @@
 | 设置 | 语音转写：本地 Whisper / 百度语音识别（自备 Key） |
 
 ![清理](screenshots/16-cleanup-list-masked.png)  
-*图 17：垃圾清理*
-
-![清理详情](screenshots/17-cleanup-detail-masked.png)  
-*图 18：占用详情*
+*图 11：垃圾清理*
 
 ![手动密钥](screenshots/20-manual-keys-masked.png)  
-*图 19：手动输入密钥*
+*图 12：手动输入密钥*
 
 ![设置](screenshots/21-settings-page-masked.png)  
-*图 20：语音转写设置*
+*图 13：语音转写设置*
 
 密钥保存在 exe 同目录 `.wechat_exp_config.json`（已加入 `.gitignore`），按数据库 salt 区分多账号，互不覆盖。
 
@@ -323,25 +312,13 @@
 | 中间 | 气泡消息（己方浅橙） |
 | 底栏 | 分页 + 按日期跳转 |
 
-![布局](screenshots/11-chat-viewer-layout-masked.png)  
-*图 21：完整布局*
-
-![筛选](screenshots/12-filter-panel-masked.png)  
-*图 22：筛选栏*
-
 打开会话时先加载消息与轻量统计，发送者列表后台补全，避免首屏卡住。
 
 ### 4.2 消息类型
 
 文字、图片、视频、语音、文件、表情、引用、小程序/视频号卡片、系统消息等。
 
-![消息类型](screenshots/13-message-types-masked.png)  
-*图 23：消息展示*
-
 语音旁可点转写（引擎见设置页）。
-
-![语音转写](screenshots/14-voice-transcribe-masked.png)  
-*图 24：语音与转写*
 
 ### 4.3 头像与名称
 
@@ -371,7 +348,7 @@
 正常。那是本地服务控制台，**不要关**，关掉服务就停了。
 
 ![控制台](screenshots/15-console-window-masked.png)  
-*图 25：控制台窗口*
+*图 14：控制台窗口*
 
 **Q：浏览器没自动开？**  
 手动访问 `http://127.0.0.1:5000`。
@@ -435,10 +412,11 @@ python src/main.py voice-export --chat 家族群 --merge-by person --format mp3
 - **最新 Release**：https://github.com/yuuuzzh/wechat-export/releases/tag/v0.1.0  
 - **Windows 可执行文件**：https://github.com/yuuuzzh/wechat-export/releases/download/v0.1.0/WeChatExport-v0.1.0-windows-x64.exe  
 
-下载 exe 后双击即可；也可本地执行 `quick_build.bat` / `build.bat` 自行打包。分享包目录：`share_package/`（模板与说明）。
+下载 exe 后双击即可；也可在项目根目录运行 `build.bat` 自行打包，输出为 `dist/wechat_exp.exe`。`quick_build.bat` / `build_exe.bat` 兼容入口调用同一构建流程，不再生成不同配置。
 
-> 发新版时请同步：构建产物、Release / tag、本节版本说明。  
-> `build.bat` 可能改写 `wechat_exp.spec`，构建后请还原仓库中的手工维护版本。
+`make_share_package.bat` 会从 `share_template/` 生成 `share_package/`。构建产物、分享包、虚拟环境、数据库和本地配置已加入 `.gitignore`；上传源码时保留 `src/`、`tests/`、`docs/`、`screenshots/`、`tools/` 和 `share_template/`。
+
+> 发新版时请同步：`src/engine/version.py`、`file_version_info.txt`、Release / tag 和本节版本说明。构建始终读取根目录 `wechat_exp.spec`。
 
 反馈时请附带：程序界面或控制台截图、微信版本、Windows 版本（`winver`）。
 

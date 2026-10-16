@@ -10,7 +10,7 @@
     以及"页面脚本没有踩到撞名/未定义全局"这类**加载期**缺陷。
   * **不能测**：DOM 渲染后的行为（pytest 不执行 JS）。那部分交给
     `tests/test_search_js.py` 的 **classic-script load guard**：它在一个 vm realm 里
-    按页面真实顺序加载全部五个文件（含 `search-app.js`），断言初始化真的跑完、
+    按页面真实顺序加载全部七个文件（含 `search-app.js`），断言初始化真的跑完、
     两个命名空间存在，并把索引失败 / 文本索引缺失时的界面判定也断言在 DOM 上。
 
 为什么"脚本顺序"和"经典脚本加载"是**行为性**断言而不是装饰 —— 本项目刚发生过
@@ -24,7 +24,7 @@
      `SearchRender.*` 全 undefined —— 而所有 `require()` 断言全绿
      （CommonJS 把模块包进函数作用域，撞名根本不会发生）。
 
-因此本文件断言脚本顺序**恰好等于**那 5 个文件（顺序常量与
+因此本文件断言脚本顺序**恰好等于**那 7 个文件（顺序常量与
 `tests/test_search_js.py` 的加载守卫**同源**，不各写一份），并用源码级断言钉住
 "页面只以命名空间形态引用 phase-1 的纯函数"。
 
@@ -233,7 +233,7 @@ class TestPageStaticContract:
         assert 'id="%s"' % control_id in html, control_id
 
     def test_scripts_are_loaded_in_exactly_the_page_order(self, html):
-        """T7-A7/T9：顺序**恰好**是这 5 个，且与 `test_search_js.py` 的加载守卫同源。
+        """T7-A7/T9：顺序**恰好**是这 7 个，且与 `test_search_js.py` 的加载守卫同源。
 
         「都包含」对顺序错误无能为力；而顺序错的后果是
         `ReferenceError: SearchSyntax is not defined` —— 页面看着在、功能全死。
@@ -244,14 +244,14 @@ class TestPageStaticContract:
         order = tuple(re.findall(r'js/([A-Za-z0-9_\-]+\.js)', html))
         assert order == SCRIPT_ORDER, '页面脚本顺序=%r，期望=%r' % (order, SCRIPT_ORDER)
 
-    def test_the_load_guard_covers_all_five_page_files(self, html):
-        """显式钉住"加载守卫覆盖的就是页面加载的那 5 个文件"（含 `search-app.js`）。
+    def test_the_load_guard_covers_all_seven_page_files(self, html):
+        """显式钉住"加载守卫覆盖的就是页面加载的那 7 个文件"（含 `search-app.js`）。
 
         这一条把"守卫的文件清单"与"真实页面的清单"锁在一起：守卫少加载一个文件
         （比如漏掉 `search-app.js`）而页面已经引入它时，这里会红。
         """
-        assert len(SCRIPT_ORDER) == 5, SCRIPT_ORDER
-        assert len(set(SCRIPT_ORDER)) == 5, SCRIPT_ORDER
+        assert len(SCRIPT_ORDER) == 7, SCRIPT_ORDER
+        assert len(set(SCRIPT_ORDER)) == 7, SCRIPT_ORDER
         assert 'search-app.js' in SCRIPT_ORDER
         for name in SCRIPT_ORDER:
             assert ('js/%s' % name) in html, name

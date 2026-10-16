@@ -4,10 +4,8 @@
 import glob as _glob
 import os
 import re
-import shutil
 import sqlite3
 import hashlib
-from collections import defaultdict
 
 
 # --- 目录名黑名单：深度搜索时跳过，避免浪费时间/越界 ---

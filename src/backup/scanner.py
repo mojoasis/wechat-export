@@ -1,7 +1,6 @@
 """Discover WeChat data directories, accounts, and chats for backup."""
 import os
 import re
-import sqlite3
 from dataclasses import dataclass, field
 from typing import Optional
 

@@ -14,6 +14,7 @@ def vendor_dir():
     if getattr(sys, 'frozen', False):
         meipass = getattr(sys, '_MEIPASS', '') or ''
         if meipass:
+            candidates.insert(0, os.path.join(meipass, 'src', 'web', 'static', 'vendor'))
             candidates.insert(0, os.path.join(meipass, 'web', 'static', 'vendor'))
             candidates.insert(0, os.path.join(meipass, 'static', 'vendor'))
         candidates.insert(0, os.path.join(os.path.dirname(sys.executable),

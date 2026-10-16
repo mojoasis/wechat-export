@@ -398,11 +398,11 @@ MUTATIONS = (
         },
     ),
     dict(
-        name='export-kind-hardcoded-to-contacts',
+        name='export-groups-kind-set-to-contacts',
         why='群聊页签导出时仍然按联系人导出（`kind` 写死）',
         file='contacts-app.js',
-        old="kind: AddressBookStore.data.activeTab === 'groups' ? 'groups' : 'contacts',",
-        new="kind: 'contacts',",
+        old="if (t === 'groups') return 'groups';",
+        new="if (t === 'groups') return 'contacts';",
         expect_failed_exact={'kind/groups-tab-sends-kind-groups'},
     ),
     dict(

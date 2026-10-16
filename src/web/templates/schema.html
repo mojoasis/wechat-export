@@ -17,7 +17,20 @@
   </div>
   <p id="schema-paths" class="schema-muted"></p>
   <p id="schema-summary" role="status" aria-live="polite"></p>
-  <p class="schema-muted">未解密的库可先到 <a href="/decrypt">解密数据库</a> 执行全量解密，然后返回刷新。字段注释只在此页展示，读取结构不修改数据库。</p>
+  <div class="form-row">
+    <div>
+      <label for="schema-export-scope">导出范围</label>
+      <select id="schema-export-scope"><option value="current">当前数据库</option><option value="all">全部数据库</option></select>
+    </div>
+    <div>
+      <label for="schema-export-format">文件格式</label>
+      <select id="schema-export-format"><option value="json">JSON（完整结构）</option><option value="markdown">Markdown（中文说明）</option></select>
+    </div>
+    <button id="schema-export" type="button" class="btn btn-primary" disabled>导出表结构</button>
+  </div>
+  <p id="schema-export-status" role="status" aria-live="polite"></p>
+  <p class="schema-muted">导出包含全部表、字段、中文说明、依据、SQL 和约束，不受搜索筛选影响，也不包含聊天记录。全部库导出会列出未解密或读取失败的库。</p>
+  <p class="schema-muted">未解密的库可先到 <a href="/decrypt">解密数据库</a> 执行全量解密，然后返回刷新。字段注释用于显示与导出，读取结构不修改数据库。</p>
 </div>
 <div class="schema-layout">
   <aside class="config-panel schema-sidebar" aria-label="数据表列表">
@@ -42,7 +55,7 @@
       </div>
       <details open><summary>建表 / 视图 SQL</summary><pre id="schema-sql"></pre></details>
       <details><summary>索引</summary><div id="schema-indexes"></div></details>
-      <details><summary>外键</summary><pre id="schema-foreign-keys"></pre></details>
+      <details><summary>声明的外键</summary><pre id="schema-foreign-keys"></pre></details>
     </div>
   </section>
 </div>

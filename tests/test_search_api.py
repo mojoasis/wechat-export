@@ -9,7 +9,7 @@
   * T7-A3 `/status` 不得付逐表 COUNT(*)/MAX(create_time) 的代价
   * T7-A4 构建失败要推 SSE error 事件、且状态不得报 ready；并发构建要 409
   * T7-A6 `own_wxid` 不得变成隐性「发送者=我」筛选（Critical #16 回归护栏）
-  * T7-A7 页面脚本加载顺序必须**恰好**是那 5 个文件
+  * T7-A7 页面脚本加载顺序必须**恰好**是那 7 个文件
 """
 import os
 import re
@@ -720,7 +720,7 @@ class TestSearchPage:
             assert token in html, token
 
     def test_script_load_order_is_exact(self, client):
-        """T7-A7：顺序**恰好**是这 5 个 —— 「都包含」对顺序错误无能为力。
+        """T7-A7：顺序**恰好**是这 7 个 —— 「都包含」对顺序错误无能为力。
 
         顺序错（或 search-app.js 提前）会出现加载期 ReferenceError，
         整页初始化崩溃，而静态页面断言照样通过（计划缺陷 #15 的孪生风险）。

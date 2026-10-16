@@ -4,6 +4,7 @@
   const labels = { high: '项目依据', inferred: '名称推测', unknown: '未知' };
   const statuses = { ready: '可读取', not_decrypted: '未解密', unreadable: '不可读取' };
   let databases = [], tables = [], columns = [], selectedTable = '', revision = 0;
+  let exporting = false, refreshing = false;
 
   function node(tag, text, className) {
     const result = document.createElement(tag);
@@ -22,6 +23,45 @@
   function clear(message) {
     el('structure').hidden = true;
     el('status').textContent = message;
+  }
+
+  function updateExport() {
+    const ready = databases.some(d => d.path === el('database').value && d.status === 'ready');
+    el('export').disabled = exporting || refreshing || (el('export-scope').value === 'all' ? !databases.length : !ready);
+  }
+
+  async function exportSchema() {
+    if (el('export').disabled || exporting) return;
+    const format = el('export-format').value;
+    const scope = el('export-scope').value;
+    const params = { format, scope };
+    if (scope === 'current') params.db = el('database').value;
+    exporting = true;
+    updateExport();
+    el('export').textContent = '正在导出…';
+    el('export-status').textContent = '正在读取结构；全部数据库较多时请稍候…';
+    try {
+      const response = await fetch('/api/schema/export?' + new URLSearchParams(params));
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '导出失败，请重试');
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'database-schema.' + (format === 'markdown' ? 'md' : 'json');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      el('export-status').textContent = '结构文件已生成，已交给浏览器下载。';
+    } catch (error) {
+      el('export-status').textContent = '导出失败：' + error.message;
+    } finally {
+      exporting = false;
+      el('export').textContent = '导出表结构';
+      updateExport();
+    }
   }
 
   function renderTables() {
@@ -82,7 +122,7 @@
       }
       if (!data.indexes.length) el('indexes').append(node('p', '未声明索引'));
       el('foreign-keys').textContent = data.foreign_keys.length ? data.foreign_keys.map(f =>
-        `${f.from} → ${f.table}.${f.to || '主键'}（ON UPDATE ${f.on_update} / ON DELETE ${f.on_delete}）`).join('\n') : '未声明外键';
+        `${f.from} → ${f.table}.${f.to || '主键'}（ON UPDATE ${f.on_update} / ON DELETE ${f.on_delete}）`).join('\n') : '未声明外键；字段说明中可能包含应用层关联。';
       el('status').textContent = '';
       el('structure').hidden = false;
     } catch (error) {
@@ -91,6 +131,7 @@
   }
 
   async function loadTables() {
+    updateExport();
     const current = ++revision;
     tables = []; selectedTable = '';
     el('table-search').value = '';
@@ -114,6 +155,8 @@
   }
 
   async function refresh() {
+    refreshing = true;
+    updateExport();
     const current = ++revision;
     const previous = el('database').value;
     el('database').disabled = true;
@@ -140,12 +183,16 @@
     } catch (error) {
       if (current === revision) clear(error.message);
     } finally {
+      refreshing = false;
+      updateExport();
       el('refresh').disabled = false;
     }
   }
 
   el('database').addEventListener('change', loadTables);
   el('refresh').addEventListener('click', refresh);
+  el('export').addEventListener('click', exportSchema);
+  el('export-scope').addEventListener('change', updateExport);
   el('table-search').addEventListener('input', renderTables);
   el('column-search').addEventListener('input', renderColumns);
   refresh();

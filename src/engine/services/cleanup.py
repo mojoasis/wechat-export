@@ -16,7 +16,6 @@ actual survival rate, then scale all estimates by that factor.
 """
 import hashlib
 import os
-import random
 import re
 import sqlite3
 import time

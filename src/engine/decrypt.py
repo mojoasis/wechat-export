@@ -9,7 +9,6 @@ import os
 import shutil
 import sqlite3
 import struct
-import sys
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA512
 from Crypto.Protocol.KDF import PBKDF2

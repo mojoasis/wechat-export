@@ -5,7 +5,6 @@
 "文字稿关键字"过滤）早就支持，只缺数据来源。这里补上这一环，并且**只读存储、不触发识别**：
 导出不该偷偷跑模型（本地 Whisper 几秒/条，几百条会卡很久）。
 """
-import os
 
 
 def apply_transcripts(items, store=None) -> int:

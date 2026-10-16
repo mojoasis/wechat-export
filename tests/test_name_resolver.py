@@ -3,11 +3,28 @@ import pytest
 import sqlite3
 import os
 import tempfile
-from engine.services.name_resolver import resolve_wxid, pick_display_name
+from engine.services.name_resolver import resolve_wxid, pick_display_name, _load_chatroom_names
+
+
+@pytest.mark.parametrize('lookup', [
+    lambda root: resolve_wxid(root, 'wxid_missing'),
+    _load_chatroom_names,
+], ids=['contact', 'chatroom'])
+def test_lookup_closes_database_after_sql_error(tmp_path, monkeypatch, lookup):
+    contact = tmp_path / 'contact'
+    contact.mkdir()
+    conn = sqlite3.connect(contact / 'contact.db')
+    monkeypatch.setattr(sqlite3, 'connect', lambda path: conn)
+    try:
+        lookup(str(tmp_path))  # Empty schema exercises graceful SQL-error handling.
+        with pytest.raises(sqlite3.ProgrammingError, match='closed'):
+            conn.execute('SELECT 1')
+    finally:
+        conn.close()
 
 
 class TestPickDisplayName:
-    """Most tests move from test_display_name.py — verify same behavior."""
+    """Unnamed contacts leave the fallback choice to their caller."""
 
     def test_remark_takes_priority_when_different(self):
         result = pick_display_name('wxid_abc', 'Mom', 'Nickname', 'AliasName', 'wxid_abc')
@@ -23,27 +40,31 @@ class TestPickDisplayName:
 
     def test_alias_skipped_when_equals_username(self):
         result = pick_display_name('wxid_abc', None, None, 'wxid_abc', 'wxid_abc')
-        assert result == 'wxid_abc'
+        assert result == ''
 
-    def test_all_fields_none_returns_username(self):
+    def test_all_fields_none_returns_empty(self):
         result = pick_display_name('wxid_abc', None, None, None, 'wxid_abc')
-        assert result == 'wxid_abc'
+        assert result == ''
 
-    def test_all_fields_empty_returns_username(self):
+    def test_all_fields_empty_returns_empty(self):
         result = pick_display_name('wxid_abc', '', '', '', 'wxid_abc')
-        assert result == 'wxid_abc'
+        assert result == ''
+
+    def test_returns_nick_when_remark_is_none(self):
+        result = pick_display_name('wxid_abc', None, 'Nick', None, 'wxid_abc')
+        assert result == 'Nick'
 
     def test_returns_alias_when_remark_and_nick_are_none(self):
         result = pick_display_name('wxid_1', None, None, 'Alias', 'wxid_1')
         assert result == 'Alias'
 
-    def test_wxid_fallback_when_db_username_is_none(self):
+    def test_no_name_when_db_username_is_none(self):
         result = pick_display_name('wxid_xyz', None, None, None, None)
-        assert result == 'wxid_xyz'
+        assert result == ''
 
     def test_whitespace_fields_treated_as_empty(self):
         result = pick_display_name('wxid_abc', '   ', '\t', '\n', 'wxid_abc')
-        assert result == 'wxid_abc'
+        assert result == ''
 
     def test_db_username_overrides_wxid_for_skip_check(self):
         result = pick_display_name('wxid_abc', 'special_name', None, None, 'db_user_123')
@@ -57,12 +78,12 @@ class TestPickDisplayName:
         ('Mom', 'Nick', 'Alias', 'wxid_1', 'Mom'),
         ('wxid_1', 'Nick', 'Alias', 'wxid_1', 'Nick'),
         (None, 'wxid_1', 'Alias', 'wxid_1', 'Alias'),
-        (None, None, 'wxid_1', 'wxid_1', 'wxid_1'),
+        (None, None, 'wxid_1', 'wxid_1', ''),
         ('Rem', None, None, 'wxid_1', 'Rem'),
-        ('wxid_1', 'wxid_1', 'wxid_1', 'wxid_1', 'wxid_1'),
+        ('wxid_1', 'wxid_1', 'wxid_1', 'wxid_1', ''),
         ('  ', 'Nick', None, 'wxid_1', 'Nick'),
         ('wxid_1', '  ', 'Alias', 'wxid_1', 'Alias'),
-        ('wxid_1', 'wxid_1', '  ', 'wxid_1', 'wxid_1'),
+        ('wxid_1', 'wxid_1', '  ', 'wxid_1', ''),
     ])
     def test_fallback_chain(self, remark, nick, alias, db_uname, expected):
         result = pick_display_name('wxid_1', remark, nick, alias, db_uname)
@@ -108,6 +129,27 @@ class TestResolveWxid:
     def test_resolve_unknown_returns_wxid(self, contact_db_path):
         result = resolve_wxid(contact_db_path, 'wxid_nonexistent')
         assert result == 'wxid_nonexistent'
+
+    def test_unnamed_groups_keep_readable_fallbacks(self, contact_db_path):
+        from engine.services.chat import _enrich_contacts_chatroom_names
+
+        conn = sqlite3.connect(os.path.join(contact_db_path, 'contact', 'contact.db'))
+        conn.execute('CREATE TABLE chat_room (username TEXT, ext_buffer BLOB)')
+        conn.executemany('INSERT INTO contact VALUES (?, ?, NULL, NULL, NULL, ?)', [
+            (4, '1234@chatroom', ''), (5, '5678@chatroom', ''),
+        ])
+        conn.execute('INSERT INTO chat_room VALUES (?, ?)',
+                     ('1234@chatroom', b'\x00wxid_zhangsan\x00wxid_lisi\x00'))
+        conn.commit()
+        conn.close()
+        contacts = [
+            {'id': '1234@chatroom', 'name': '1234@chatroom'},
+            {'id': '5678@chatroom', 'name': '5678@chatroom'},
+        ]
+
+        _enrich_contacts_chatroom_names(contact_db_path, contacts)
+
+        assert [c['name'] for c in contacts] == ['张三、李四', '群聊(5678)']
 
     def test_resolve_empty_string(self, contact_db_path):
         result = resolve_wxid(contact_db_path, '')

@@ -1,7 +1,6 @@
 """Build unified chats.db index from decrypted WeChat databases."""
 import hashlib
 import os
-import re
 import sqlite3
 from datetime import datetime
 

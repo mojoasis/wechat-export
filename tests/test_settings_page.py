@@ -120,10 +120,15 @@ def test_dbdir_js_is_loaded_before_the_inline_page_script(html):
     entries = []
     for attrs, code in SCRIPT_RE.findall(html):
         m = SRC_RE.search(attrs)
-        entries.append(m.group(1) if m else '(inline)')
+        if m:
+            entries.append(m.group(1))
+        elif re.search(r'new\s+DbDirPicker\s*\(', code):
+            entries.append('(picker inline)')
+        else:
+            entries.append('(inline)')
     assert 'dbdir.js' in entries, '设置页没有加载 dbdir.js（顺序=%s）' % entries
-    assert '(inline)' in entries, entries
-    assert entries.index('dbdir.js') < entries.index('(inline)'), \
+    assert entries.count('(picker inline)') == 1, entries
+    assert entries.index('dbdir.js') < entries.index('(picker inline)'), \
         'dbdir.js 必须在页面内联脚本之前加载（否则 new DbDirPicker 直接 ReferenceError）: %s' % entries
 
 

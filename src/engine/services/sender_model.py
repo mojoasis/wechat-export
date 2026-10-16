@@ -42,7 +42,6 @@
 本模块一概不用 —— 本机实测这两条会把他人的语音/文件/引用判成"我"（968 行里 42 行）。
 """
 import hashlib
-import os
 import re
 import sqlite3
 

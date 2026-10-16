@@ -214,7 +214,8 @@ function makeSelect(doc, id) {
 
 function cachedHint(html) {
   const m = /id="dir-hint"[^>]*>([\s\S]*?)<\/div>/.exec(html);
-  return m ? m[1] : null;
+  // HTML parsing normalizes Windows line endings before creating DOM text nodes.
+  return m ? m[1].replace(/\r\n?/g, '\n') : null;
 }
 
 function makeDoc(html) {

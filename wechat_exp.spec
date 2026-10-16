@@ -1,18 +1,33 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('src', 'src'), ('tools/silk_decoder.exe', 'tools'), ('tools/silk_decoder.c', 'tools')]
+ROOT = Path(SPECPATH)
+datas = [
+    (str(ROOT / 'src/web/templates'), 'src/web/templates'),
+    (str(ROOT / 'src/web/static'), 'src/web/static'),
+    (str(ROOT / 'README.md'), '.'),
+    (str(ROOT / 'docs/HTTP-API.md'), 'docs'),
+    (str(ROOT / 'docs/DATABASE-SCHEMA.md'), 'docs'),
+    (str(ROOT / 'screenshots'), 'screenshots'),
+    (str(ROOT / 'tools/silk_decoder.exe'), 'tools'),
+]
 binaries = []
-hiddenimports = ['Crypto.Cipher.AES', 'Crypto.Util.Padding', 'flask', 'werkzeug', 'jinja2', 'blackboxprotobuf', 'zstandard', 'openpyxl', 'jieba', 'jieba.posseg', 'requests', 'zhconv', 'lameenc', 'pypinyin', 'psutil']
-tmp_ret = collect_all('zhconv')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('jieba')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-
+hiddenimports = [
+    'Crypto.Cipher.AES', 'Crypto.Util.Padding', 'flask', 'werkzeug', 'jinja2',
+    'markdown', 'blackboxprotobuf', 'zstandard', 'openpyxl', 'jieba',
+    'jieba.posseg', 'requests', 'zhconv', 'lameenc', 'pypinyin', 'psutil',
+]
+for package in ('zhconv', 'jieba', 'keystone'):
+    package_datas, package_binaries, package_imports = collect_all(package)
+    datas += package_datas
+    binaries += package_binaries
+    hiddenimports += package_imports
 
 a = Analysis(
-    ['C:/Code/wechat-export/src/main.py'],
-    pathex=[],
+    [str(ROOT / 'src/main.py')],
+    pathex=[str(ROOT / 'src')],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -44,5 +59,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='C:/Code/wechat-export/file_version_info.txt',
+    version=str(ROOT / 'file_version_info.txt'),
 )

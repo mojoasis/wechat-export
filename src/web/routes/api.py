@@ -30,12 +30,25 @@ def schema_databases():
 
 @api_bp.route('/schema/tables')
 @api_bp.route('/schema/table')
+@api_bp.route('/schema/export')
 def schema_metadata():
     import sqlite3
     from engine.services.schema import list_tables, table_structure
     root = current_app.config.get('DECRYPTED_DIR')
     database = request.args.get('db', '')
     try:
+        if request.path.endswith('/export'):
+            from engine.services.schema_export import export_document, render_markdown
+            fmt = request.args.get('format', 'json')
+            if fmt not in ('json', 'markdown'):
+                raise ValueError('导出格式仅支持 json 或 markdown')
+            document = export_document(root, database, current_app.config.get('DB_DIR'),
+                                       request.args.get('scope', 'current'))
+            response = jsonify(document) if fmt == 'json' else make_response(render_markdown(document))
+            extension = 'json' if fmt == 'json' else 'md'
+            response.headers['Content-Type'] = ('application/json' if fmt == 'json' else 'text/markdown') + '; charset=utf-8'
+            response.headers['Content-Disposition'] = 'attachment; filename=database-schema.' + extension
+            return response
         if request.path.endswith('/table'):
             return jsonify(table_structure(root, database, request.args.get('table', '')))
         return jsonify(list_tables(root, database))
@@ -726,11 +739,11 @@ def asr_commercial():
 def asr_model_file(relpath):
     """GET /api/asr/model/<model>/<file> — 提供 ASR 模型文件（用户目录优先，其次内置）。"""
     from flask import send_file
+    from werkzeug.security import safe_join
     from engine.services.asr_model import model_roots
-    rel = relpath.replace("/", os.sep)
     for root in model_roots():
-        p = os.path.join(root, rel)
-        if os.path.isfile(p):
+        p = safe_join(root, relpath)
+        if p and os.path.isfile(p):
             if p.lower().endswith(".onnx"):
                 mime = "application/octet-stream"
             elif p.lower().endswith(".json"):

@@ -130,6 +130,82 @@ def test_field_name_guesses_are_not_claimed_as_verified(schema_env):
     assert cols['real_sender_id']['confidence'] != 'high'
 
 
+@pytest.mark.parametrize('database,table,fields,basis', [
+    ('contact/contact.db', 'contact_label',
+     {'label_id_': 'extra_buffer', 'label_name_': '标签'}, 'contact_extra.py'),
+    ('message/message_resource.db', 'ChatName2Id',
+     {'user_name': 'MessageResourceInfo.chat_id'}, 'message/media_resolve.py'),
+    ('message/message_resource.db', 'MessageResourceInfo',
+     {'chat_id': 'ChatName2Id.rowid', 'message_local_id': '本地编号',
+      'message_local_type': '消息类型', 'packed_info': 'protobuf'}, 'message/media_resolve.py'),
+    ('message/media_0.db', 'Name2Id',
+     {'user_name': 'VoiceInfo.chat_name_id'}, 'media.py'),
+    ('message/media_12.db', 'VoiceInfo',
+     {'chat_name_id': 'Name2Id.rowid', 'create_time': '秒',
+      'local_id': '本地编号', 'voice_data': 'SILK'}, 'media.py'),
+    ('hardlink/hardlink.db', 'image_hardlink_info_v4',
+     {'md5': '文件名', 'file_name': '文件名',
+      'dir1': 'dir2id.rowid', 'dir2': 'dir2id.rowid'}, 'media.py'),
+    ('hardlink/hardlink.db', 'video_hardlink_info_v4',
+     {'dir1': 'dir2id.rowid'}, 'media.py'),
+    ('hardlink/hardlink.db', 'file_hardlink_info_v4',
+     {'dir2': 'dir2id.rowid'}, 'media.py'),
+    ('hardlink/hardlink.db', 'dir2id', {'username': '目录'}, 'message/media_resolve.py'),
+    ('message/message_fts.db', 'name2id',
+     {'username': 'c4'}, 'search_index.py'),
+    ('message/message_fts.db', 'message_fts_v4_12_content',
+     {'c0': '文本', 'c1': '本地编号', 'c3': '消息类型',
+      'c4': 'name2id.rowid', 'c6': '秒'}, 'search_index.py'),
+    ('sns/sns.db', 'SnsTimeLine',
+     {'tid': '朋友圈', 'user_name': '发布者', 'content': 'XML'}, 'sns.py'),
+])
+def test_annotations_use_each_database_own_relations(tmp_path, database, table, fields, basis):
+    from engine.services.schema import list_tables, table_structure
+
+    db = tmp_path / database
+    db.parent.mkdir(parents=True)
+    columns = ', '.join(f'"{name}" BLOB' for name in [*fields, 'unparsed_field'])
+    with sqlite3.connect(db) as conn:
+        conn.execute(f'CREATE TABLE "{table}" ({columns})')
+    data = table_structure(str(tmp_path), database, table)
+    assert list_tables(str(tmp_path), database)['tables'][0]['confidence'] == 'high'
+    assert data['confidence'] == 'high'
+    for col in data['columns']:
+        if col['name'] == 'unparsed_field':
+            assert col['confidence'] == 'unknown'
+        else:
+            assert col['confidence'] == 'high'
+            assert fields[col['name']] in col['comment']
+            assert basis in col['basis']
+
+
+@pytest.mark.parametrize('database,table,column', [
+    ('unknown.db', 'contact_label', 'label_id_'),
+    ('contact.db', 'MessageResourceInfo', 'chat_id'),
+    ('message_0.db', 'ChatName2Id', 'user_name'),
+    ('message_resource.db', 'Name2Id', 'user_name'),
+    ('media_backup.db', 'VoiceInfo', 'voice_data'),
+    ('media_1.db', 'Name2Id', 'username'),
+    ('message_fts.db', 'name2id', 'user_name'),
+    ('message_fts.db', 'message_fts_v4_X_content', 'c0'),
+    ('message_fts.db', 'message_fts_v4_1_content', 'c2'),
+    ('message_fts.db', 'message_fts_v4_1_content', 'c5'),
+    ('message_0.db', 'message_fts_v4_1_content', 'c0'),
+    ('hardlink.db', 'voice_hardlink_info_v4', 'dir1'),
+    ('hardlink.db', 'image_hardlink_info_v4', 'file_size'),
+    ('sns_archive.db', 'SnsTimeLine', 'content'),
+    ('sns.db', 'SnsTimeLine', 'create_time'),
+])
+def test_annotations_do_not_promote_wrong_context_or_unread_fields(tmp_path, database, table, column):
+    from engine.services.schema import table_structure
+
+    with sqlite3.connect(tmp_path / database) as conn:
+        conn.execute(f'CREATE TABLE "{table}" ("{column}" BLOB)')
+    col = table_structure(str(tmp_path), database, table)['columns'][0]
+    assert col['confidence'] != 'high'
+    assert not col['basis'].startswith('项目解析依据')
+
+
 def test_empty_root_and_page_entry(tmp_path):
     app = create_app(str(tmp_path / 'absent'), wxid='wxid_demo')
     client = app.test_client()

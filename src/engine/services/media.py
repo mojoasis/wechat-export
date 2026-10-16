@@ -1,7 +1,6 @@
 """Media file resolution and serving."""
 import hashlib as _hashlib
 import os
-import re
 import sqlite3
 import mimetypes
 import struct

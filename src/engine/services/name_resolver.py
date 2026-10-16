@@ -7,11 +7,11 @@ Merge of:
 """
 import logging
 import os
-import re
 import sqlite3
 import threading
 import time
 from collections import OrderedDict
+from contextlib import closing
 
 _name_cache = OrderedDict()
 _name_cache_lock = threading.Lock()
@@ -20,7 +20,7 @@ _NAME_CACHE_TTL = 300  # seconds
 
 
 def pick_display_name(wxid: str, remark, nick, alias, db_username) -> str:
-    """Pick best display name, skipping fields that just echo the wxid/username."""
+    """Pick a usable display name, or '' so callers can choose a fallback."""
     remark_v = (remark or '').strip()
     nick_v = (nick or '').strip()
     alias_v = (alias or '').strip()
@@ -77,6 +77,7 @@ def _load_chatroom_names(decrypted_dir: str) -> dict:
     contact_db = _find_contact_db(decrypted_dir)
     if not contact_db:
         return result
+    conn = None
     try:
         conn = sqlite3.connect(contact_db)
 
@@ -123,9 +124,11 @@ def _load_chatroom_names(decrypted_dir: str) -> dict:
                 short = base[:12] + '..' if len(base) > 12 else base
                 result[uname] = f'群聊({short})'
 
-        conn.close()
     except sqlite3.Error:
         pass
+    finally:
+        if conn is not None:
+            conn.close()
     return result
 
 
@@ -213,7 +216,7 @@ def resolve_wxid(decrypted_dir: str, wxid: str) -> str:
 
     result = wxid
     try:
-        with sqlite3.connect(contact_db) as conn:
+        with closing(sqlite3.connect(contact_db)) as conn:
             row = conn.execute(
                 "SELECT remark, nick_name, alias, username FROM contact WHERE username=?",
                 (wxid,)

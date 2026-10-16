@@ -20,8 +20,6 @@ import ctypes.wintypes as wt
 import os
 import re
 import sqlite3
-import struct
-import sys
 
 kernel32 = ctypes.windll.kernel32
 
@@ -612,7 +610,6 @@ def _get_wechat_version(h_process):
                 continue
 
             # Get version info size
-            import ctypes.wintypes as _wt
             dummy = wt.DWORD(0)
             size = ctypes.windll.version.GetFileVersionInfoSizeW(dll_path, ctypes.byref(dummy))
             if size == 0:

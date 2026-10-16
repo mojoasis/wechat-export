@@ -12,8 +12,8 @@ pytest **不执行 JS**，本仓库也没有 JS 测试框架。所以"页面级�
    本文件跑 `node <script>`、断言退出码 0、且输出里没有 `FAIL`。
 
 2. **经典脚本加载守卫（Phase 2，`PAGE_GUARD_JS`）**：在一个 **vm realm** 里按页面
-   真实顺序加载**全部五个文件**（`api.js → utils.js → search-syntax.js →
-   search-render.js → search-app.js`），配一个按 `search.html` 真实 id 生成的假 DOM。
+   真实顺序加载**全部七个文件**（`theme.js → api.js → utils.js → sse_progress.js →
+   search-syntax.js → search-render.js → search-app.js`），配一个按 `search.html` 真实 id 生成的假 DOM。
    这一段是本文件存在的最强理由：经典脚本共用一个全局名字空间，顶层同名声明
    （`utils.js` 的 `const escapeHtml` vs 某个文件里的 `function escapeHtml`）会让
    **整个文件在实例化阶段抛 SyntaxError、一行都不执行**，而所有 `require()` 断言
@@ -48,10 +48,10 @@ RENDER_EXPORTS = ('statusNotice', 'slowNotice', 'truncatedPageNotice', 'formatRe
 
 # `search.html` 的脚本顺序（T7-A7 的契约）。这是**唯一**一份顺序常量：
 # `tests/test_search_page.py` 断言真实页面里抽出来的顺序与它逐项相等，
-# 本文件则按它把五个文件当经典脚本加载进同一个 realm。
+# 本文件则按它把七个文件当经典脚本加载进同一个 realm。
 # 一份常量、两处断言 ⇒ 守卫覆盖的文件必然就是页面加载的文件，不可能漂移。
-SCRIPT_ORDER = ('api.js', 'utils.js', 'search-syntax.js', 'search-render.js',
-                'search-app.js')
+SCRIPT_ORDER = ('theme.js', 'api.js', 'utils.js', 'sse_progress.js',
+                'search-syntax.js', 'search-render.js', 'search-app.js')
 
 _RESULT_RE = re.compile(r'RESULT:\s*(\d+)\s+passed,\s*(\d+)\s+failed')
 
@@ -134,14 +134,14 @@ def test_pure_modules_load_in_node_and_export_api(name, exports):
 # Phase 2：经典脚本加载守卫（浏览器真实加载路径）
 #
 # 这段 JS 不在仓库里单独放文件，而是随本测试一起交付 —— 它的**被测对象**是
-# `SCRIPT_ORDER` 这五个文件，而那个常量就在这里，紧挨着断言，不会被误改漏改。
+# `SCRIPT_ORDER` 这七个文件，而那个常量就在这里，紧挨着断言，不会被误改漏改。
 # ===========================================================================
 
 PAGE_GUARD_JS = r'''// Task 9 Phase 2 —— 经典脚本加载守卫（浏览器真实加载路径）
 //
 // 用法: node page_guard.js <JS_DIR>
 //
-// 为什么必须有这段：脚本是**经典脚本**，五个文件共用同一个全局名字空间。
+// 为什么必须有这段：脚本是**经典脚本**，七个文件共用同一个全局名字空间。
 //   ① 顶层同名声明 → 浏览器在**实例化阶段**抛
 //      SyntaxError: Identifier 'X' has already been declared → 那个文件**一行都不执行**
 //      （`utils.js` 顶层的 `const escapeHtml` 就是活靶子，Phase 1 实测过）；
@@ -160,8 +160,8 @@ const JS_DIR = process.argv[2];
 const TEMPLATE = path.join(JS_DIR, '..', '..', 'templates', 'search.html');
 
 // 页面脚本顺序（与 tests/test_search_js.py 的 SCRIPT_ORDER 同源）
-const SCRIPT_ORDER = ['api.js', 'utils.js', 'search-syntax.js', 'search-render.js',
-                      'search-app.js'];
+const SCRIPT_ORDER = ['theme.js', 'api.js', 'utils.js', 'sse_progress.js',
+                     'search-syntax.js', 'search-render.js', 'search-app.js'];
 // 服务端渲染的 12 个规范类型名 —— 只用来让假 DOM 像真页面
 const CANONICAL_TYPES = ['文本', '图片', '文件', '语音', '名片', '视频', '表情',
                          '位置', '链接', '网络电话', '系统', '撤回'];
@@ -237,6 +237,7 @@ function makeDocument() {
   const cache = {};
   const doc = {
     _known: known,
+    documentElement: { setAttribute: function () {} },
     getElementById: function (id) {
       if (!known[id]) return null;      // 真页面里不存在的 id → null（暴露拼写错误）
       if (!cache[id]) cache[id] = makeElement(doc, id);
@@ -248,6 +249,7 @@ function makeDocument() {
       return el;
     },
     addEventListener: function () {},
+    querySelector: function () { return null; },
     querySelectorAll: function () { return []; },
   };
   const type = doc.getElementById('search-type');
@@ -311,11 +313,11 @@ async function main() {
   const ev = vm.runInContext.bind(vm);
 
   // =========================================================================
-  console.log('--- classic script load: all five page files, one realm ---');
+  console.log('--- classic script load: all seven page files, one realm ---');
   // =========================================================================
   const realm = loadRealm(SCRIPT_ORDER, makeFetch('pending', null));
   const ctx = realm.ctx;
-  check('all five page files load with no load-time throw',
+  check('all seven page files load with no load-time throw',
         realm.errors.length === 0, realm.errors.join('\n        '));
   check('every file in the page order actually executed',
         realm.loaded.length === SCRIPT_ORDER.length,
@@ -332,7 +334,7 @@ async function main() {
           return k !== 'SearchApp'; }).length === 0,
         'delta=' + JSON.stringify(appDelta));
 
-  check('utils.js global escapeHtml is intact after loading all five files',
+  check('utils.js global escapeHtml is intact after loading all seven files',
         ev('escapeHtml("<b>")', ctx) === '&lt;b&gt;');
   check('api.js global api object is intact',
         ev('typeof api === "object" && typeof api.contacts === "function"', ctx) === true);
@@ -887,11 +889,11 @@ main().catch(function (e) {
 
 
 def test_page_files_load_as_classic_scripts_in_one_realm(tmp_path):
-    """五个页面文件必须能在**同一个 realm** 里按页面顺序当经典脚本加载成功。
+    """七个页面文件必须能在**同一个 realm** 里按页面顺序当经典脚本加载成功。
 
     这是 `escapeHtml` 那一类"顶层撞名 → 整文件不执行 → 页面看着正常、功能全死"
     缺陷的唯一可观测点：`require()` 永远测不出来（CommonJS 各自一个作用域）。
-    同一个 vm realm 里加载全部五个文件，任何顶层同名声明都会在**实例化阶段**抛
+    同一个 vm realm 里加载全部七个文件，任何顶层同名声明都会在**实例化阶段**抛
     `SyntaxError`，`search-app.js` 引用不存在的全局（#15 的 `TYPES`）也会立刻抛。
 
     同一个 realm 里还顺势断言了页面的**判定落点**（T9-A1 索引失败/文本索引缺失、
@@ -921,17 +923,18 @@ def test_page_files_load_as_classic_scripts_in_one_realm(tmp_path):
     assert passed > 0, '加载守卫一条用例都没跑:\n%s' % out
 
 
-def test_script_order_constant_covers_the_five_page_files():
+def test_script_order_constant_covers_the_seven_page_files():
     """`SCRIPT_ORDER` 就是这个页面契约（顺序 + 文件集合），不许被顺手改短。
 
     它同时驱动上面的加载守卫和 `tests/test_search_page.py` 里"页面真实顺序 ==
     SCRIPT_ORDER"的断言；改短了（比如漏掉 `search-app.js`）守卫就会变成
     一条什么都守不住的装饰。
     """
-    assert SCRIPT_ORDER == ('api.js', 'utils.js', 'search-syntax.js',
-                            'search-render.js', 'search-app.js'), SCRIPT_ORDER
-    assert SCRIPT_ORDER[0] == 'api.js'
-    assert SCRIPT_ORDER[1] == 'utils.js'
+    assert SCRIPT_ORDER == ('theme.js', 'api.js', 'utils.js', 'sse_progress.js',
+                            'search-syntax.js', 'search-render.js', 'search-app.js'), SCRIPT_ORDER
+    assert SCRIPT_ORDER[0] == 'theme.js'
+    assert SCRIPT_ORDER[1] == 'api.js'
+    assert SCRIPT_ORDER[2] == 'utils.js'
     assert SCRIPT_ORDER[-1] == 'search-app.js'
     js_dir = os.path.join(ROOT, 'src', 'web', 'static', 'js')
     for name in SCRIPT_ORDER:
