@@ -21,6 +21,32 @@ from engine.services.name_resolver import _find_contact_db
 api_bp = Blueprint('api', __name__)
 
 
+@api_bp.route('/schema/databases')
+def schema_databases():
+    from engine.services.schema import list_databases
+    return jsonify(list_databases(current_app.config.get('DECRYPTED_DIR'),
+                                  current_app.config.get('DB_DIR')))
+
+
+@api_bp.route('/schema/tables')
+@api_bp.route('/schema/table')
+def schema_metadata():
+    import sqlite3
+    from engine.services.schema import list_tables, table_structure
+    root = current_app.config.get('DECRYPTED_DIR')
+    database = request.args.get('db', '')
+    try:
+        if request.path.endswith('/table'):
+            return jsonify(table_structure(root, database, request.args.get('table', '')))
+        return jsonify(list_tables(root, database))
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except FileNotFoundError as e:
+        return jsonify({'error': str(e)}), 404
+    except (sqlite3.Error, OSError):
+        return jsonify({'error': '数据库不可读：请确认已成功解密、文件完整且当前可访问'}), 422
+
+
 def _cfg():
     return (current_app.config.get('DECRYPTED_DIR', ''),
             current_app.config.get('WXID'),

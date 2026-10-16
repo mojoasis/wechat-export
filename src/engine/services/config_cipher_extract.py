@@ -34,6 +34,8 @@ import re
 import struct
 import time
 
+from engine.decrypt import derive_mac_key
+
 PAGE_SZ = 4096
 KEY_SZ = 32
 SALT_SZ = 16
@@ -72,8 +74,7 @@ class MBI(ctypes.Structure):
 # ---------------------------------------------------------------------------
 def verify_enc_key(enc_key, db_page1):
     salt = db_page1[:SALT_SZ]
-    mac_salt = bytes(b ^ 0x3A for b in salt)
-    mac_key = hashlib.pbkdf2_hmac("sha512", enc_key, mac_salt, 2, dklen=KEY_SZ)
+    mac_key = derive_mac_key(enc_key, salt)
     hmac_data = db_page1[SALT_SZ: PAGE_SZ - RESERVE_SZ + IV_SZ]
     stored_hmac = db_page1[PAGE_SZ - HMAC_SZ: PAGE_SZ]
     hm = hmac_mod.new(mac_key, hmac_data, hashlib.sha512)

@@ -366,6 +366,10 @@ def create_app(decrypted_dir: str, wxid: str = None, db_dir: str = None) -> Flas
     def contacts_page():
         return render_template('contacts.html')
 
+    @app.route('/schema')
+    def schema_page():
+        return render_template('schema.html')
+
     # Global search page — 类型下拉由服务端渲染（唯一事实源 TYPE_ALIASES，见 T7-A7）
     @app.route('/search')
     def search_page():

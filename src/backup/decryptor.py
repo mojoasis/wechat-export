@@ -6,6 +6,8 @@ import json
 import struct
 from typing import Callable
 
+from engine.decrypt import derive_mac_key
+
 # SQLCipher 4 constants (must match engine/constants.py)
 PAGE_SZ = 4096
 KEY_SZ = 32
@@ -55,8 +57,7 @@ def _verify_enc_key(enc_key: bytes, db_page1: bytes) -> bool:
     Returns True if the key's HMAC matches the stored HMAC in page 1.
     """
     salt = db_page1[:SALT_SZ]
-    mac_salt = bytes(b ^ 0x3A for b in salt)
-    mac_key = hashlib.pbkdf2_hmac("sha512", enc_key, mac_salt, 2, dklen=KEY_SZ)
+    mac_key = derive_mac_key(enc_key, salt)
     hmac_data = db_page1[SALT_SZ: PAGE_SZ - 80 + 16]
     stored_hmac = db_page1[PAGE_SZ - 64: PAGE_SZ]
     hm = hmac_mod.new(mac_key, hmac_data, hashlib.sha512)
@@ -202,7 +203,7 @@ def _iter_encrypted_dbs(db_storage_path: str):
     """遍历 db_storage 下所有加密库（跳过 -wal/-shm）。"""
     for root, _dirs, files in os.walk(db_storage_path):
         for f in sorted(files):
-            if f.endswith('.db') and not f.endswith('-wal') and not f.endswith('-shm'):
+            if f.lower().endswith('.db'):
                 yield os.path.join(root, f)
 
 
@@ -251,6 +252,7 @@ def decrypt_for_backup(
     on_progress: Callable[[str, float], None] = None,
     salt_keys: dict = None,
     link_dest: str = None,
+    all_databases: bool = False,
 ) -> list:
     """Decrypt WeChat databases from db_storage to output_dir.
 
@@ -266,15 +268,36 @@ def decrypt_for_backup(
         keys: {db_path_relative: key_hex} mapping
         on_progress: callback(current_db, progress_0_to_1)
         link_dest: previous backup root for incremental reuse
+        all_databases: also decrypt databases outside the chat backup whitelist
 
     Returns:
         (decrypted_paths, skipped_missing_key, stats)
         stats: {reused, decrypted, fingerprint}
     """
     from engine.decrypt import decrypt_database
+    from pathlib import Path
     from .fingerprint import (
         load_fingerprint, rel_key, save_fingerprint, source_sig, try_reuse_decrypted,
     )
+
+    if all_databases:
+        source_root = Path(db_storage_path).resolve()
+        output_root = Path(output_dir).resolve()
+        if output_root.is_relative_to(source_root):
+            raise ValueError('解密输出目录必须位于微信源数据目录之外')
+        all_sources = list(_iter_encrypted_dbs(db_storage_path))
+        source_ids = set()
+        for src in all_sources:
+            stat = os.stat(src)
+            source_ids.add((stat.st_dev, stat.st_ino))
+        for src in all_sources:
+            target = output_root / os.path.relpath(src, db_storage_path)
+            if not target.resolve().is_relative_to(output_root):
+                raise ValueError('解密目标通过目录链接指向了输出目录之外')
+            if target.exists():
+                stat = target.stat()
+                if (stat.st_dev, stat.st_ino) in source_ids:
+                    raise ValueError('解密目标与源数据库是同一个文件，已停止以保护源数据')
 
     # salt 表：多账号同名库靠它区分（老配置里可能为空，下面会顺手回填）
     if salt_keys is None:
@@ -295,9 +318,11 @@ def decrypt_for_backup(
 
     results = []
     skipped_missing_key = []
+    handled = set()
 
     def _handle_one(src_path: str, dst_path: str, label: str, progress: float) -> bool:
         nonlocal reused, freshly
+        handled.add(os.path.normcase(os.path.abspath(src_path)))
         try:
             new_fp[rel_key(db_storage_path, src_path)] = source_sig(src_path)
         except OSError:
@@ -310,6 +335,8 @@ def decrypt_for_backup(
             return True
         key = _resolve_key(keys, src_path, salt_keys)
         if key is None:
+            if all_databases:
+                skipped_missing_key.append(os.path.relpath(src_path, db_storage_path))
             return False
         try:
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
@@ -343,6 +370,7 @@ def decrypt_for_backup(
         total = len(db_files) + 3
         for i, fname in enumerate(db_files):
             src_path = os.path.join(msg_src, fname)
+            handled.add(os.path.normcase(os.path.abspath(src_path)))
             dst_path = os.path.join(msg_out, fname)
             prog = (i + 1) / total
             if try_reuse_decrypted(src_path, dst_path, link_dest, prev_fp, db_storage_path):
@@ -422,6 +450,15 @@ def decrypt_for_backup(
             if on_progress and _resolve_key(keys, sns_src, salt_keys) is None:
                 on_progress('跳过 sns.db (缺密钥 — 可打开微信朋友圈后重新提取密钥)', 0.99)
 
+    # The schema browser needs every source DB; normal backups keep the whitelist.
+    if all_databases:
+        remaining = [src for src in all_sources
+                     if os.path.normcase(os.path.abspath(src)) not in handled]
+        total += len(remaining)
+        for src in remaining:
+            rel = os.path.relpath(src, db_storage_path)
+            _handle_one(src, os.path.join(output_dir, rel), rel, 0.99)
+
     # Persist fingerprints for next incremental run
     try:
         if new_fp:
@@ -441,7 +478,7 @@ def decrypt_for_backup(
 
     stats = {'reused': reused, 'decrypted': freshly, 'fingerprint': len(new_fp)}
     if on_progress:
-        skipped = total - len(results)
+        skipped = (len(all_sources) if all_databases else total) - len(results)
         msg = f"完成: 新解密 {freshly}，复用 {reused}"
         if skipped > 0:
             msg += f"，跳过 {skipped} (密钥缺失/HMAC不匹配)"

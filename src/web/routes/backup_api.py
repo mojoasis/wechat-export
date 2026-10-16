@@ -381,11 +381,12 @@ def backup_decrypt():
                 push('decrypt', detail, progress)
 
             results, skipped_keys, dec_stats = decrypt_for_backup(
-                db_dir, output_dir, keys, on_progress=_on_progress)
+                db_dir, output_dir, keys, on_progress=_on_progress, all_databases=True)
             if results and os.path.isdir(os.path.join(output_dir, 'message')):
                 set_backup_data_dir(output_dir)
                 with flask_app.app_context():
                     flask_app.config['DECRYPTED_DIR'] = output_dir
+                    flask_app.config['DB_DIR'] = db_dir
             push.done({'decrypted': len(results), 'files': results,
                         'skipped_missing_key': skipped_keys,
                         'db_reused': dec_stats.get('reused', 0),

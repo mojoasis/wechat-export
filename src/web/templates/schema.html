@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}数据库结构 — WeChat Export{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/schema.css') }}">
+{% endblock %}
+{% block content %}
+<a href="/" class="back-link">← 返回仪表盘</a>
+<h2>数据库结构</h2>
+<p class="schema-muted">查看当前备份或解密目录中的全部数据库、表、视图与字段结构。中文含义来自项目解析依据或名称推测，均非微信官方注释。</p>
+<div class="config-panel">
+  <div class="form-row">
+    <div style="flex:1;min-width:0">
+      <label for="schema-database">数据库</label>
+      <select id="schema-database" style="width:100%" disabled><option>加载中…</option></select>
+    </div>
+    <button id="schema-refresh" type="button" class="btn btn-primary">刷新</button>
+  </div>
+  <p id="schema-paths" class="schema-muted"></p>
+  <p id="schema-summary" role="status" aria-live="polite"></p>
+  <p class="schema-muted">未解密的库可先到 <a href="/decrypt">解密数据库</a> 执行全量解密，然后返回刷新。字段注释只在此页展示，读取结构不修改数据库。</p>
+</div>
+<div class="schema-layout">
+  <aside class="config-panel schema-sidebar" aria-label="数据表列表">
+    <label for="schema-table-search">搜索表名或中文含义</label>
+    <input id="schema-table-search" type="search" placeholder="例如 Msg_、contact、消息" style="width:100%">
+    <p id="schema-table-count" class="schema-muted"></p>
+    <div id="schema-tables"></div>
+  </aside>
+  <section class="config-panel schema-detail" aria-label="表结构详情">
+    <p id="schema-status" role="status" aria-live="polite">请选择数据库和数据表。</p>
+    <div id="schema-structure" hidden>
+      <h3 id="schema-table-name"></h3>
+      <p id="schema-table-comment" class="schema-muted"></p>
+      <label for="schema-column-search">搜索字段或中文含义</label>
+      <input id="schema-column-search" type="search" placeholder="例如 create_time、发送者" style="width:100%">
+      <p id="schema-column-count" class="schema-muted"></p>
+      <div class="schema-scroll">
+        <table class="schema-grid">
+          <thead><tr><th scope="col">字段</th><th scope="col">类型</th><th scope="col">主键序号</th><th scope="col">NOT NULL</th><th scope="col">默认值</th><th scope="col">中文含义</th><th scope="col">依据</th></tr></thead>
+          <tbody id="schema-columns"></tbody>
+        </table>
+      </div>
+      <details open><summary>建表 / 视图 SQL</summary><pre id="schema-sql"></pre></details>
+      <details><summary>索引</summary><div id="schema-indexes"></div></details>
+      <details><summary>外键</summary><pre id="schema-foreign-keys"></pre></details>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/schema.js') }}"></script>
+{% endblock %}

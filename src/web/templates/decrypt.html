@@ -3,7 +3,7 @@
 {% block content %}
 <a href="/" class="back-link">← 返回仪表盘</a>
 <h2 style="margin:0 0 4px 0">🔓 解密数据库</h2>
-<p style="color:#8fb9a6;font-size:12px;margin:0 0 20px 0">使用密钥文件批量解密微信聊天数据库</p>
+<p style="color:var(--px-muted);font-size:12px;margin:0 0 20px 0">递归解密微信源目录中的全部数据库，保留子目录结构。缺少密钥的库会跳过；完成后可在 <a href="/schema">数据库结构</a> 页查看表与字段中文含义。</p>
 
 <div class="config-panel">
   <div class="form-row">
@@ -57,10 +57,19 @@ const page = new WizardPage({
 
 page.showResult = function(result) {
   WizardPage.prototype.showResult.call(this, result);
+  const esc = value => {
+    const text = document.createElement('span');
+    text.textContent = String(value);
+    return text.innerHTML;
+  };
   let html = '<dl class="result-stats">';
   if (result.decrypted !== undefined) html += '<dt>已解密数据库</dt><dd>' + result.decrypted + ' 个</dd>';
-  if (result.files) html += '<dt>文件列表</dt><dd>' + result.files.map(f => '<code>' + f + '</code>').join('<br>') + '</dd>';
+  if (result.files) html += '<dt>文件列表</dt><dd>' + result.files.map(f => '<code>' + esc(f) + '</code>').join('<br>') + '</dd>';
+  if (result.skipped_missing_key && result.skipped_missing_key.length) {
+    html += '<dt>缺少密钥，已跳过</dt><dd>' + result.skipped_missing_key.map(esc).join('<br>') + '</dd>';
+  }
   html += '</dl>';
+  html += '<p><a href="/schema">查看数据库结构与字段中文含义 →</a></p>';
   document.getElementById('result-content').innerHTML = html;
 };
 </script>

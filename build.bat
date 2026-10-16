@@ -105,7 +105,6 @@ if %errorlevel% neq 0 (
     --exclude-module pydoc ^
     --exclude-module doctest ^
     --exclude-module bdb ^
-    --strip ^
     "%~dp0src\main.py"
 
 echo.

@@ -40,6 +40,22 @@ Host: 127.0.0.1:5000
 
 ---
 
+## 数据库结构
+
+页面入口：`/schema`。只返回当前 `DECRYPTED_DIR` 内的 SQLite 元数据，不返回聊天记录行。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/schema/databases` | 递归列出解密目录与源 `DB_DIR` 中的 `.db`，标明可读取 / 未解密 / 不可读取状态 |
+| GET | `/api/schema/tables?db=message%2Fmessage_0.db` | 指定数据库中的全部表和视图，含表中文说明 |
+| GET | `/api/schema/table?db=message%2Fmessage_0.db&table=Name2Id` | 字段、原始建表 SQL、索引、外键及字段中文注释 |
+
+`db` 为解密目录内的相对路径，不接受绝对路径、越界路径或非 `.db` 文件。表名须实际存在，不接受任意 SQL。
+
+字段注释返回 `comment`（中文含义）、`confidence`（`high` 项目解析依据 / `inferred` 名称推测 / `unknown` 未知）、`basis`（依据）。`high` 表示项目已有相应用法，不代表微信官方定义。结构来自实际数据库，注释不写回数据库。缺参数 / 非法路径返回 400，不存在返回 404，不可读取返回 422。
+
+---
+
 ## 导出
 
 | 方法 | 路径 | 说明 |

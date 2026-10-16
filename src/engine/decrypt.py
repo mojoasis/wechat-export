@@ -11,6 +11,8 @@ import sqlite3
 import struct
 import sys
 from Crypto.Cipher import AES
+from Crypto.Hash import SHA512
+from Crypto.Protocol.KDF import PBKDF2
 
 PAGE_SZ = 4096
 KEY_SZ = 32
@@ -23,7 +25,8 @@ SQLITE_HDR = b'SQLite format 3\x00'
 
 def derive_mac_key(enc_key, salt):
     mac_salt = bytes(b ^ 0x3A for b in salt)
-    return hashlib.pbkdf2_hmac("sha512", enc_key, mac_salt, 2, dklen=KEY_SZ)
+    # Frozen Python builds may lack hashlib.pbkdf2_hmac when OpenSSL cannot load.
+    return PBKDF2(enc_key, mac_salt, dkLen=KEY_SZ, count=2, hmac_hash_module=SHA512)
 
 
 def decrypt_page(enc_key, page_data, pgno):

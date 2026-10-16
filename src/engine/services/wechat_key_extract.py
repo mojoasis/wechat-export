@@ -29,6 +29,7 @@ import time
 
 # Strategy 3: read-only Config.Cipher scan (WeChat 4.1.10+, no admin needed)
 from engine.services.config_cipher_extract import extract_keys_via_config_cipher
+from engine.decrypt import derive_mac_key
 from engine.utils import account_id_candidates
 
 PAGE_SZ = 4096
@@ -43,8 +44,7 @@ _KNOWN_EXE_NAMES = {'weixin.exe', 'wechat.exe'}
 # ---------------------------------------------------------------------------
 def verify_enc_key(enc_key, db_page1):
     salt = db_page1[:SALT_SZ]
-    mac_salt = bytes(b ^ 0x3A for b in salt)
-    mac_key = hashlib.pbkdf2_hmac("sha512", enc_key, mac_salt, 2, dklen=KEY_SZ)
+    mac_key = derive_mac_key(enc_key, salt)
     hmac_data = db_page1[SALT_SZ: PAGE_SZ - 80 + 16]
     stored_hmac = db_page1[PAGE_SZ - 64: PAGE_SZ]
     hm = hmac_mod.new(mac_key, hmac_data, hashlib.sha512)

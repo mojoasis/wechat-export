@@ -1,16 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
+
+datas = [('src', 'src'), ('tools/silk_decoder.exe', 'tools'), ('tools/silk_decoder.c', 'tools')]
+binaries = []
+hiddenimports = ['Crypto.Cipher.AES', 'Crypto.Util.Padding', 'flask', 'werkzeug', 'jinja2', 'blackboxprotobuf', 'zstandard', 'openpyxl', 'jieba', 'jieba.posseg', 'requests', 'zhconv', 'lameenc', 'pypinyin', 'psutil']
+tmp_ret = collect_all('zhconv')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('jieba')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['src/main.py'],
-    pathex=['src'],
-    binaries=[],
-    datas=[('src', 'src'), ('README.md', '.'), ('docs/HTTP-API.md', 'docs'), ('tools/silk_decoder.exe', 'tools')],
-    hiddenimports=['Crypto.Cipher.AES', 'Crypto.Util.Padding', 'flask', 'werkzeug', 'jinja2', 'markdown', 'blackboxprotobuf', 'zstandard', 'openpyxl', 'jieba', 'pypinyin', 'psutil', 'requests'],
+    ['C:/Code/wechat-export/src/main.py'],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pytest', 'tkinter'],
+    excludes=['pytest', '_pytest', 'tkinter', '_tkinter', 'turtle', 'idlelib', 'ensurepip', 'pip', 'setuptools', 'wheel', 'pkg_resources', 'multiprocessing', 'concurrent.futures.process', 'lib2to3', 'xmlrpc', 'pydoc', 'doctest', 'bdb'],
     noarchive=False,
     optimize=0,
 )
@@ -25,7 +34,7 @@ exe = EXE(
     name='wechat_exp',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=False,  # GNU strip can break Windows Python/OpenSSL DLLs.
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
@@ -35,4 +44,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    version='C:/Code/wechat-export/file_version_info.txt',
 )
